@@ -76,13 +76,14 @@ async def debug_groq_test() -> dict:
     and litellm can use it. If 401, something is wrong with the key or
     how litellm is reading it.
     """
+    import traceback
     import httpx
 
-    key = os.getenv("GROQ_API_KEY") or ""
-    if not key:
-        return {"status": "error", "detail": "GROQ_API_KEY is not set in the environment"}
-
     try:
+        key = os.getenv("GROQ_API_KEY") or ""
+        if not key:
+            return {"status": "error", "detail": "GROQ_API_KEY is not set in the environment"}
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
                 "https://api.groq.com/openai/v1/models",
@@ -96,7 +97,11 @@ async def debug_groq_test() -> dict:
             "detail": (r.text[:300] if r.status_code != 200 else "ok"),
         }
     except Exception as exc:  # noqa: BLE001
-        return {"status": "error", "detail": f"request failed: {exc}"}
+        return {
+            "status": "error",
+            "detail": f"request failed: {exc}",
+            "traceback": traceback.format_exc()[-2000:],
+        }
 
 
 @router.post("/research", status_code=status.HTTP_202_ACCEPTED, tags=["research"])
