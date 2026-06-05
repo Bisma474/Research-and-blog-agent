@@ -39,6 +39,36 @@ def health(session: Session = Depends(get_session)) -> HealthResponse:
     )
 
 
+@router.get("/debug/env", tags=["meta"])
+def debug_env() -> dict:
+    """Return a masked view of the LLM-related env vars.
+
+    Used to diagnose "Invalid API Key" style issues where the app is reading
+    a different value than expected. Safe to expose: only shows first 4 + last 4
+    chars plus the total length.
+    """
+    import os
+
+    def mask(name: str) -> dict:
+        v = os.getenv(name) or ""
+        if not v:
+            return {"name": name, "set": False, "length": 0}
+        return {
+            "name": name,
+            "set": True,
+            "length": len(v),
+            "preview": (v[:4] + "..." + v[-4:]) if len(v) > 8 else "***",
+        }
+
+    return {
+        "GROQ_API_KEY": mask("GROQ_API_KEY"),
+        "OPENAI_API_KEY": mask("OPENAI_API_KEY"),
+        "ANTHROPIC_API_KEY": mask("ANTHROPIC_API_KEY"),
+        "SERPER_API_KEY": mask("SERPER_API_KEY"),
+        "MODEL": os.getenv("MODEL"),
+    }
+
+
 @router.post("/research", status_code=status.HTTP_202_ACCEPTED, tags=["research"])
 def start_research(
     payload: ResearchRequest,
