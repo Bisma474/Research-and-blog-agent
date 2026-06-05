@@ -103,12 +103,20 @@ export default function RunPage() {
           <div className="label mb-4">Agents</div>
           <PipelineTimeline events={events} />
           {run.status === "failed" && run.error && (
-            <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
-              <div className="flex items-center gap-1.5 font-semibold mb-1">
-                <AlertCircle className="h-3.5 w-3.5" /> Crew failed
+            <details className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-xs text-rose-200">
+              <summary className="cursor-pointer p-3 font-semibold flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" /> Crew failed — click to expand
+              </summary>
+              <div className="px-3 pb-3">
+                <button
+                  onClick={() => navigator.clipboard?.writeText(run.error || "")}
+                  className="mb-2 text-[10px] underline text-rose-200/70 hover:text-rose-200"
+                >
+                  Copy full error
+                </button>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-snug text-rose-200/80 bg-rose-950/40 rounded p-2">{run.error}</pre>
               </div>
-              <pre className="whitespace-pre-wrap break-words text-rose-200/80">{run.error.slice(0, 600)}</pre>
-            </div>
+            </details>
           )}
           {done && run.status === "completed" && (
             <Link href={`/research/${run.id}/view`} className="mt-4 btn-primary w-full">
