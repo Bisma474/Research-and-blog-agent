@@ -69,6 +69,37 @@ def debug_env() -> dict:
     }
 
 
+@router.get("/debug/groq-test", tags=["meta"])
+async def debug_groq_test() -> dict:
+    """Make a real call to Groq using the env-var API key.
+
+    This is the definitive test: if this returns 200, the env var is correct
+    and litellm can use it. If 401, something is wrong with the key or
+    how litellm is reading it.
+    """
+    import httpx
+
+    key = os.getenv("GROQ_API_KEY") or ""  # noqa: F821 (os imported above)
+    if not key:
+        return {"status": "error", "detail": "GROQ_API_KEY is not set in the environment"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                "https://api.groq.com/openai/v1/models",
+                headers={"Authorization": f"Bearer {key}"},
+            )
+        return {
+            "status": r.status_code,
+            "ok": r.status_code == 200,
+            "key_length": len(key),
+            "key_preview": (key[:4] + "..." + key[-4:]) if len(key) > 8 else "***",
+            "detail": (r.text[:300] if r.status_code != 200 else "ok"),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "detail": f"request failed: {exc}"}
+
+
 @router.post("/research", status_code=status.HTTP_202_ACCEPTED, tags=["research"])
 def start_research(
     payload: ResearchRequest,
