@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import AsyncIterator
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -47,8 +48,6 @@ def debug_env() -> dict:
     a different value than expected. Safe to expose: only shows first 4 + last 4
     chars plus the total length.
     """
-    import os
-
     def mask(name: str) -> dict:
         v = os.getenv(name) or ""
         if not v:
@@ -79,7 +78,7 @@ async def debug_groq_test() -> dict:
     """
     import httpx
 
-    key = os.getenv("GROQ_API_KEY") or ""  # noqa: F821 (os imported above)
+    key = os.getenv("GROQ_API_KEY") or ""
     if not key:
         return {"status": "error", "detail": "GROQ_API_KEY is not set in the environment"}
 
