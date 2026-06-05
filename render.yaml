@@ -1,0 +1,64 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+#
+# Two services from the same repo:
+#   - research-blog-api  (FastAPI + CrewAI, persistent disk for SQLite)
+#   - research-blog-ui   (Next.js, calls the API)
+#
+# Usage:
+#   1. Push this repo to GitHub
+#   2. Sign in to https://dashboard.render.com and click "New +" -> "Blueprint"
+#   3. Point it at this repo; Render reads render.yaml automatically
+#   4. Set GROQ_API_KEY and (optionally) SERPER_API_KEY when prompted
+#   5. Wait ~5 min for the first deploy
+#   6. Share the UI URL on your resume: https://research-blog-ui.onrender.com
+
+services:
+  - type: web
+    name: research-blog-api
+    runtime: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DATABASE_URL
+        value: sqlite:////var/data/runs.db
+      - key: OUTPUT_DIR
+        value: /var/data/output
+      - key: EXTRA_CORS_ORIGINS
+        value: https://research-blog-ui.onrender.com
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: MODEL
+        value: groq/llama-3.3-70b-versatile
+    disk:
+      name: api-data
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: web
+    name: research-blog-ui
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://research-blog-api.onrender.com/api/v1

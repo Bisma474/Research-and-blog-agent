@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #0a0a0f;
+  color: #e6e6f0;
+}
+
+body {
+  background-image:
+    radial-gradient(at 20% 0%, rgba(124, 92, 255, 0.12) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(34, 211, 238, 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+::selection { background: rgba(124, 92, 255, 0.4); }
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-surface/80 backdrop-blur-sm;
+  }
+  .card-pad { @apply p-6; }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-accent to-accent2 text-white hover:shadow-lg hover:shadow-accent/25 hover:scale-[1.02] active:scale-[0.98];
+  }
+  .btn-ghost { @apply btn border border-border bg-surface2/40 text-white hover:bg-surface2; }
+  .input {
+    @apply w-full rounded-xl border border-border bg-surface2/50 px-4 py-3 text-white placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 transition;
+  }
+  .label { @apply text-xs font-medium uppercase tracking-wider text-muted; }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface2/60 px-2.5 py-1 text-xs text-muted;
+  }
+  .pill-running { @apply pill border-amber-500/30 bg-amber-500/10 text-amber-300; }
+  .pill-done    { @apply pill border-emerald-500/30 bg-emerald-500/10 text-emerald-300; }
+  .pill-failed  { @apply pill border-rose-500/30 bg-rose-500/10 text-rose-300; }
+  .pill-pending { @apply pill border-border bg-surface2/60 text-muted; }
+
+  .prose-doc {
+    @apply text-[15px] leading-7 text-zinc-200;
+  }
+  .prose-doc h1 { @apply text-3xl font-semibold mt-8 mb-4 text-white; }
+  .prose-doc h2 { @apply text-2xl font-semibold mt-8 mb-3 text-white border-b border-border pb-2; }
+  .prose-doc h3 { @apply text-xl  font-semibold mt-6 mb-2 text-white; }
+  .prose-doc p  { @apply my-3; }
+  .prose-doc ul { @apply list-disc pl-6 my-3; }
+  .prose-doc ol { @apply list-decimal pl-6 my-3; }
+  .prose-doc li { @apply my-1; }
+  .prose-doc code { @apply rounded bg-surface2 px-1.5 py-0.5 text-sm text-accent2; }
+  .prose-doc pre  { @apply rounded-xl border border-border bg-surface2/60 p-4 overflow-x-auto my-4; }
+  .prose-doc pre code { @apply bg-transparent p-0; }
+  .prose-doc blockquote { @apply border-l-4 border-accent/50 pl-4 italic text-muted my-4; }
+  .prose-doc a { @apply text-accent2 underline underline-offset-2 hover:text-accent; }
+  .prose-doc table { @apply w-full my-4 border-collapse; }
+  .prose-doc th, .prose-doc td { @apply border border-border px-3 py-2; }
+  .prose-doc th { @apply bg-surface2/60 text-left; }
+}

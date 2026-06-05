@@ -1,0 +1,123 @@
+planning_task:
+  description: >
+    Based on the input topic: {topic}, produce a research plan.
+    The plan must be a numbered list of 4-6 specific research questions,
+    each with: (a) the question, (b) the search angle, (c) the preferred
+    source types (e.g. peer-reviewed papers, industry reports, primary news,
+    official docs), and (d) the recency cutoff.
+  expected_output: >
+    A markdown research plan with 4-6 numbered research questions and a
+    one-paragraph rationale for the overall research approach.
+  agent: research_planner
+  output_file: output/{run_id}/plan.md
+  markdown: true
+
+research_task:
+  description: >
+    Using the approved research plan, conduct deep web research on {topic}.
+    For every research question, gather:
+      - 3-5 concrete facts with numbers/dates
+      - Named sources with URLs
+      - At least one contrarian or non-obvious viewpoint
+    Use the search and scrape tools aggressively. Cite every claim with [n]
+    and list full references at the end.
+  expected_output: >
+    A raw research dossier in markdown with sections per research question,
+    inline [n] citations, and a "References" section with numbered URLs,
+    source names, and access dates. The dossier should be 1500-3000 words.
+  agent: senior_researcher
+  context:
+    - planning_task
+  output_file: output/{run_id}/dossier.md
+  markdown: true
+
+fact_check_task:
+  description: >
+    Audit the research dossier. For each section, verify:
+      1. Every quantitative claim has a citation.
+      2. Every named person/organization is real and correctly attributed.
+      3. Recency is within the agreed cutoff (or flagged as outdated).
+      4. No section is built on a single source.
+    Mark each section as VERIFIED, NEEDS_FIX (with the specific fix), or
+    REMOVE (with reason). Produce a final "verified dossier" with corrections
+    applied.
+  expected_output: >
+    A corrected, verified research dossier in markdown, prefixed with a
+    short audit log of what was changed and why. Include a per-section
+    confidence score (high/medium/low).
+  agent: fact_checker
+  context:
+    - research_task
+  output_file: output/{run_id}/dossier_verified.md
+  markdown: true
+
+report_task:
+  description: >
+    Write a 2000-word structured report on {topic} based on the verified
+    research dossier. Required sections:
+      1. Executive Summary (150 words)
+      2. Background & Context
+      3. Key Findings (use H3 subheadings)
+      4. Current State of the Field
+      5. Future Trends (next 12-24 months)
+      6. Recommendations
+      7. References (carry over from dossier, renumbered)
+    Use the {current_year} as the report's reference year.
+  expected_output: >
+    A polished ~2000-word markdown report on {topic} with all required
+    sections. The report should read as a single authoritative voice and
+    be suitable for a senior executive audience.
+  agent: report_writer
+  context:
+    - fact_check_task
+  output_file: output/{run_id}/report.md
+  markdown: true
+
+editing_task:
+  description: >
+    Edit the draft report on {topic} for clarity, flow, tone, and grammar.
+    Tighten prose, remove filler and hedging, fix any factual inconsistencies
+    flagged by the fact-checker that slipped through, and ensure consistent
+    voice throughout. Do not add new claims; only refine existing ones.
+  expected_output: >
+    The final, publication-ready report in markdown. Output ONLY the edited
+    report, no meta-commentary.
+  agent: editor
+  context:
+    - report_task
+  output_file: output/{run_id}/report_final.md
+  markdown: true
+
+blog_writing_task:
+  description: >
+    Convert the final report on {topic} into a 500-word engaging blog post
+    suitable for a general tech audience. Requirements:
+      - Punchy, creative headline
+      - Opening hook (1-2 sentences)
+      - 3-4 short subheaded sections
+      - 1 memorable analogy
+      - Closing call-to-action
+  expected_output: >
+    A 500-word markdown blog post on {topic} with a punchy headline and
+    subheadings. No meta-commentary.
+  agent: blog_writer
+  context:
+    - editing_task
+  output_file: output/{run_id}/blog.md
+  markdown: true
+
+seo_task:
+  description: >
+    Generate SEO metadata for the blog post on {topic}. Produce:
+      - SEO title (max 60 chars)
+      - URL slug (kebab-case, max 50 chars)
+      - Meta description (max 155 chars)
+      - 5-7 hashtags (without #)
+      - 3-bullet TL;DR
+  expected_output: >
+    A markdown block with all five SEO assets, clearly labeled.
+  agent: seo_specialist
+  context:
+    - blog_writing_task
+  output_file: output/{run_id}/seo.md
+  markdown: true
