@@ -19,12 +19,15 @@ services:
     plan: free
     rootDir: .
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    # --app-dir src puts src/ on sys.path so `api.main` is importable.
+    startCommand: uvicorn --app-dir src api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
+      - key: PYTHONPATH
+        value: /opt/render/project/src
       # Free tier has no persistent disk, so SQLite lives in /tmp and the
       # service falls back to an in-memory DB if /tmp is unwritable.
       # Run history resets on every redeploy / instance restart.
