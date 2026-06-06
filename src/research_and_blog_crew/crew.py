@@ -1,6 +1,6 @@
 """Research & blog crew orchestration.
 
-A 6-agent pipeline that turns a topic into a research dossier, a long-form
+A 7-agent pipeline that turns a topic into a research dossier, a long-form
 report, and a publish-ready blog post. Designed to be imported by both the
 CLI entry point (main.py) and the FastAPI service (api/services/crew_runner.py).
 """
@@ -8,7 +8,9 @@ CLI entry point (main.py) and the FastAPI service (api/services/crew_runner.py).
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
+from typing import Any, Callable
 
 from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, crew, task
@@ -16,6 +18,49 @@ from crewai_tools import SerperDevTool, ScrapeWebsiteTool
 from crewai.agents.agent_builder.base_agent import BaseAgent
 
 from research_and_blog_crew.tools.custom_tool import CitationFormatterTool
+
+
+# ---- Rate-limit retry wrapper ---------------------------------------------
+# Groq's free tier enforces per-minute token limits. When we hit them, litellm
+# raises a BadRequestError with a "Please try again in Xs" hint. This wrapper
+# catches that and retries with the recommended sleep, so the crew self-heals
+# on transient rate limits.
+
+_DEFAULT_RETRY_EXCEPTIONS = (
+    "RateLimitError",
+    "BadRequestError",  # Groq returns BadRequestError for rate_limit_exceeded
+    "ServiceUnavailableError",
+    "Timeout",
+)
+
+
+def _is_rate_limit_error(exc: BaseException) -> tuple[bool, float]:
+    """Return (is_rate_limit, sleep_seconds) for a given exception."""
+    msg = str(exc)
+    if "rate_limit_exceeded" not in msg and "RateLimitError" not in msg:
+        return False, 0.0
+    # Parse "Please try again in 28.45s" or similar
+    import re
+    m = re.search(r"try again in (\d+(?:\.\d+)?)s", msg)
+    if m:
+        return True, float(m.group(1)) + 1.0  # +1s buffer
+    return True, 30.0
+
+
+def with_rate_limit_retry(fn: Callable[[], Any], max_retries: int = 5) -> Any:
+    """Call fn(); on rate-limit errors, sleep and retry up to max_retries times."""
+    last_exc: BaseException | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001
+            is_rl, sleep_s = _is_rate_limit_error(exc)
+            last_exc = exc
+            if not is_rl or attempt == max_retries:
+                raise
+            time.sleep(sleep_s)
+    # Unreachable, but keeps type-checkers happy
+    raise last_exc  # type: ignore[misc]
 
 
 def _build_llm() -> LLM:

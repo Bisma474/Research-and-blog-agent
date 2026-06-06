@@ -37,7 +37,11 @@ from sqlmodel import Session
 from api import database
 from api.config import get_settings
 from api.models import Run
-from research_and_blog_crew.crew import ResearchAndBlogCrew, ensure_output_dir
+from research_and_blog_crew.crew import (
+    ResearchAndBlogCrew,
+    ensure_output_dir,
+    with_rate_limit_retry,
+)
 
 
 # ---- Progress event types ---------------------------------------------------
@@ -245,13 +249,18 @@ class CrewRunner:
             output_dir = ensure_output_dir(self.run_id, base=settings.output_dir)
 
             crew_instance = ResearchAndBlogCrew()
-            result = crew_instance.crew().kickoff(
-                inputs={
-                    "topic": self.topic,
-                    "current_year": str(datetime.now().year),
-                    "run_id": self.run_id,
-                }
-            )
+
+            def _kickoff() -> object:
+                return crew_instance.crew().kickoff(
+                    inputs={
+                        "topic": self.topic,
+                        "current_year": str(datetime.now().year),
+                        "run_id": self.run_id,
+                    }
+                )
+
+            # Auto-retry on Groq rate limits so the crew self-heals.
+            result = with_rate_limit_retry(_kickoff, max_retries=6)
             self._result = result
             self._finalize(success=True)
         except BaseException as exc:  # noqa: BLE001
