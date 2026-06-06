@@ -10,12 +10,32 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from crewai import Agent, Crew, Process, Task
+from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool, ScrapeWebsiteTool
 from crewai.agents.agent_builder.base_agent import BaseAgent
 
 from research_and_blog_crew.tools.custom_tool import CitationFormatterTool
+
+
+def _build_llm() -> LLM:
+    """Build the LLM with explicit API key — no env-var magic, no ambiguity.
+
+    Reads MODEL and GROQ_API_KEY directly from os.environ so there is zero
+    chance of litellm picking up a stale value from a .env file or a dotenv
+    auto-load.  Raises at crew-build time if the key is missing so the error
+    is obvious in the Render startup logs.
+    """
+    model = os.environ.get("MODEL", "groq/llama-3.3-70b-versatile")
+    api_key = os.environ.get("GROQ_API_KEY", "")
+
+    if not api_key:
+        raise EnvironmentError(
+            "GROQ_API_KEY is not set. "
+            "Add it in the Render Dashboard → service → Environment tab."
+        )
+
+    return LLM(model=model, api_key=api_key)
 
 
 def _build_research_tools() -> list:
@@ -44,6 +64,7 @@ class ResearchAndBlogCrew:
     def research_planner(self) -> Agent:
         return Agent(
             config=self.agents_config["research_planner"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
@@ -51,6 +72,7 @@ class ResearchAndBlogCrew:
     def senior_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config["senior_researcher"],  # type: ignore[index]
+            llm=_build_llm(),
             tools=_build_research_tools() + [CitationFormatterTool()],
             verbose=True,
         )
@@ -59,6 +81,7 @@ class ResearchAndBlogCrew:
     def fact_checker(self) -> Agent:
         return Agent(
             config=self.agents_config["fact_checker"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
@@ -66,6 +89,7 @@ class ResearchAndBlogCrew:
     def report_writer(self) -> Agent:
         return Agent(
             config=self.agents_config["report_writer"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
@@ -73,6 +97,7 @@ class ResearchAndBlogCrew:
     def editor(self) -> Agent:
         return Agent(
             config=self.agents_config["editor"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
@@ -80,6 +105,7 @@ class ResearchAndBlogCrew:
     def blog_writer(self) -> Agent:
         return Agent(
             config=self.agents_config["blog_writer"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
@@ -87,6 +113,7 @@ class ResearchAndBlogCrew:
     def seo_specialist(self) -> Agent:
         return Agent(
             config=self.agents_config["seo_specialist"],  # type: ignore[index]
+            llm=_build_llm(),
             verbose=True,
         )
 
