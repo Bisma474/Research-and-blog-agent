@@ -150,7 +150,7 @@ class ResearchAndBlogCrew:
             tasks=self.tasks,
             process=Process.sequential,
             verbose=True,
-            memory=True,
+            memory=False,  # memory=True requires OpenAI embeddings; disabled for Groq-only deployments
             cache=True,
         )
 
