@@ -42,7 +42,7 @@ services:
       - key: SERPER_API_KEY
         sync: false
       - key: MODEL
-        value: groq/gemma2-9b-it
+        value: groq/meta-llama/llama-4-scout-17b-16e-instruct
 
   - type: web
     name: research-blog-ui
