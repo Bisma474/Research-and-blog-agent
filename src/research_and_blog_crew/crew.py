@@ -120,7 +120,10 @@ def _build_llm(role: str = "default") -> LLM:
         )
 
     # Deterministic key assignment: same role always picks the same key.
-    key_index = hash(role) % len(keys)
+    # Use zlib.crc32 (stable across processes) instead of built-in hash()
+    # which is salted by PYTHONHASHSEED and would reshuffle agents on restart.
+    import zlib
+    key_index = zlib.crc32(role.encode()) % len(keys)
     api_key = keys[key_index]
     print(f"[crew] role={role!r} model={model!r} key_index={key_index}/{len(keys)}")
 
