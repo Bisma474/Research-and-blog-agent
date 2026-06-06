@@ -37,8 +37,8 @@ services:
         value: https://research-blog-ui.onrender.com
       - key: GROQ_API_KEY
         sync: false
-      # SERPER_API_KEY is optional. Leave empty to skip web search and rely
-      # on the LLM's training data. Get a free key at https://serper.dev
+      - key: GROQ_API_KEYS
+        sync: false
       - key: SERPER_API_KEY
         sync: false
       - key: MODEL

@@ -63,22 +63,66 @@ def with_rate_limit_retry(fn: Callable[[], Any], max_retries: int = 5) -> Any:
     raise last_exc  # type: ignore[misc]
 
 
-def _build_llm() -> LLM:
+def _get_api_keys() -> list[str]:
+    """Collect every configured Groq API key from the environment.
+
+    Primary key comes from GROQ_API_KEY (kept for backward compatibility and
+    local-dev simplicity). Additional keys come from GROQ_API_KEYS as a
+    comma-separated list. Duplicates and blank entries are removed while
+    preserving order. The agent factory hashes the role name to pick a
+    deterministic index, so the same agent always uses the same key in a
+    given run — this gives us N independent Groq free-tier quotas.
+    """
+    keys: list[str] = []
+    primary = os.environ.get("GROQ_API_KEY", "").strip()
+    if primary:
+        keys.append(primary)
+    extras = os.environ.get("GROQ_API_KEYS", "").strip()
+    if extras:
+        for k in extras.split(","):
+            k = k.strip()
+            if k and k not in keys:
+                keys.append(k)
+    return keys
+
+
+def _build_llm(role: str = "default") -> LLM:
     """Build the LLM with explicit API key — no env-var magic, no ambiguity.
 
-    Reads MODEL and GROQ_API_KEY directly from os.environ so there is zero
+    Reads MODEL and GROQ_API_KEY[S] directly from os.environ so there is zero
     chance of litellm picking up a stale value from a .env file or a dotenv
-    auto-load.  Raises at crew-build time if the key is missing so the error
-    is obvious in the Render startup logs.
-    """
-    model = os.environ.get("MODEL", "groq/llama-3.3-70b-versatile")
-    api_key = os.environ.get("GROQ_API_KEY", "")
+    auto-load.  Raises at crew-build time if no key is set so the error is
+    obvious in the Render startup logs.
 
-    if not api_key:
+    Per-role model selection: Groq's free tier is more reliable when we route
+    tool-using agents to llama-3.3-70b-versatile (12K TPM, strong function
+    calling) and text-only agents to llama-4-scout (30K TPM, fastest). This
+    keeps the crew well under the per-minute token budget while still letting
+    the researcher issue Serper/Scrape tool calls reliably.
+
+    Per-role key selection: agents are deterministically distributed across
+    the configured key pool (GROQ_API_KEY, GROQ_API_KEYS=...) so that the 7
+    agents don't all hammer a single key's per-minute token budget.
+    """
+    keys = _get_api_keys()
+    if not keys:
         raise EnvironmentError(
             "GROQ_API_KEY is not set. "
             "Add it in the Render Dashboard → service → Environment tab."
         )
+
+    tool_using_roles = {"senior_researcher", "fact_checker"}
+    if role in tool_using_roles:
+        model = "groq/llama-3.3-70b-versatile"
+    else:
+        model = os.environ.get(
+            "MODEL", "groq/meta-llama/llama-4-scout-17b-16e-instruct"
+        )
+
+    # Deterministic key assignment: same role always picks the same key.
+    key_index = hash(role) % len(keys)
+    api_key = keys[key_index]
+    print(f"[crew] role={role!r} model={model!r} key_index={key_index}/{len(keys)}")
 
     return LLM(model=model, api_key=api_key)
 
@@ -109,7 +153,7 @@ class ResearchAndBlogCrew:
     def research_planner(self) -> Agent:
         return Agent(
             config=self.agents_config["research_planner"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("research_planner"),
             verbose=True,
         )
 
@@ -117,7 +161,7 @@ class ResearchAndBlogCrew:
     def senior_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config["senior_researcher"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("senior_researcher"),
             tools=_build_research_tools() + [CitationFormatterTool()],
             verbose=True,
         )
@@ -126,7 +170,7 @@ class ResearchAndBlogCrew:
     def fact_checker(self) -> Agent:
         return Agent(
             config=self.agents_config["fact_checker"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("fact_checker"),
             verbose=True,
         )
 
@@ -134,7 +178,7 @@ class ResearchAndBlogCrew:
     def report_writer(self) -> Agent:
         return Agent(
             config=self.agents_config["report_writer"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("report_writer"),
             verbose=True,
         )
 
@@ -142,7 +186,7 @@ class ResearchAndBlogCrew:
     def editor(self) -> Agent:
         return Agent(
             config=self.agents_config["editor"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("editor"),
             verbose=True,
         )
 
@@ -150,7 +194,7 @@ class ResearchAndBlogCrew:
     def blog_writer(self) -> Agent:
         return Agent(
             config=self.agents_config["blog_writer"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("blog_writer"),
             verbose=True,
         )
 
@@ -158,7 +202,7 @@ class ResearchAndBlogCrew:
     def seo_specialist(self) -> Agent:
         return Agent(
             config=self.agents_config["seo_specialist"],  # type: ignore[index]
-            llm=_build_llm(),
+            llm=_build_llm("seo_specialist"),
             verbose=True,
         )
 

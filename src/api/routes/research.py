@@ -59,8 +59,16 @@ def debug_env() -> dict:
             "preview": (v[:4] + "..." + v[-4:]) if len(v) > 8 else "***",
         }
 
+    keys: list[dict] = [mask("GROQ_API_KEY")]
+    extras = os.getenv("GROQ_API_KEYS", "").strip()
+    if extras:
+        for i, k in enumerate([x.strip() for x in extras.split(",") if x.strip()], start=2):
+            keys.append({**mask("GROQ_API_KEYS"), "index": i, "length": len(k)})
+
     return {
         "GROQ_API_KEY": mask("GROQ_API_KEY"),
+        "GROQ_API_KEYS_extra_count": max(0, len(keys) - 1),
+        "key_pool_size": len(keys),
         "OPENAI_API_KEY": mask("OPENAI_API_KEY"),
         "ANTHROPIC_API_KEY": mask("ANTHROPIC_API_KEY"),
         "SERPER_API_KEY": mask("SERPER_API_KEY"),
